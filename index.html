@@ -1331,56 +1331,117 @@ async function factFor(p,name){
   catch(e){if(HARD_OFF.has(e&&e.code))SAMPLE=null;return ""}
 }
 
-/* ---- music: an original chiptune loop, generated live ---- */
+/* ---- music: "Footnote Theme", an original chiptune song generated live ----
+   Intro, verse, chorus, bridge, verse, chorus, then back to the verse.
+   Melodies are written in 8th notes as MIDI numbers: 0 = rest, -1 = hold the previous note. */
 const Music={
-  ctx:null,master:null,on:lsGet("footnote.music")!==false,timer:null,step:0,next:0,
+  ctx:null,on:lsGet("footnote.music")!==false,timer:null,step:0,next:0,
+  BPM:118,
+  CH:{Am:[57,60,64],F:[53,57,60],C:[55,60,64],G:[55,59,62],E:[56,59,64],Em:[55,59,64],Dm:[57,62,65]},
+  ROOT:{Am:45,F:41,C:48,G:43,E:40,Em:40,Dm:38},
+  SECTIONS:{
+    intro:{kit:"intro",chords:["Am","F","C","G"],mel:[
+      [0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,76,-1,74,-1]]},
+    verse:{kit:"verse",chords:["Am","F","C","G","Am","F","C","E"],mel:[
+      [69,-1,72,-1,76,74,72,-1],[72,-1,69,-1,65,-1,67,69],[67,-1,64,-1,67,72,-1,71],[71,-1,67,-1,74,-1,-1,0],
+      [69,-1,72,-1,76,-1,79,77],[76,-1,74,-1,72,-1,69,72],[76,-1,74,72,71,-1,72,74],[71,-1,-1,-1,68,-1,71,-1]]},
+    chorus:{kit:"chorus",pad:true,chords:["F","G","Em","Am","F","G","C","C"],mel:[
+      [81,-1,79,-1,77,-1,76,77],[79,-1,-1,74,-1,-1,71,74],[76,-1,79,-1,83,-1,81,79],[81,-1,-1,-1,76,-1,72,-1],
+      [77,-1,81,-1,84,-1,83,81],[79,-1,83,-1,86,-1,84,83],[84,-1,-1,-1,79,-1,76,79],[84,-1,-1,-1,-1,-1,0,0]]},
+    bridge:{kit:"bridge",pad:true,chords:["Dm","Am","Dm","E","Dm","Am","Dm","E"],mel:[
+      [74,-1,-1,-1,77,-1,76,74],[72,-1,-1,-1,69,-1,-1,-1],[74,-1,77,-1,81,-1,79,77],[76,-1,-1,-1,80,-1,-1,-1],
+      [77,-1,-1,74,-1,-1,77,79],[81,-1,-1,-1,76,-1,72,-1],[74,-1,77,-1,74,-1,69,-1],[68,-1,71,-1,76,-1,80,-1]]}
+  },
+  ORDER:["intro","verse","chorus","bridge","verse","chorus"],
+  build(){
+    this.BARS=[];
+    for(const name of this.ORDER){const s=this.SECTIONS[name];
+      s.chords.forEach((ch,i)=>this.BARS.push({name,kit:s.kit,pad:!!s.pad,ch,mel:s.mel[i],first:i===0,last:i===s.chords.length-1,nextMel:s.mel[i+1]}))}
+    this.LOOP=4; // the loop skips the 4-bar intro
+  },
   ensure(){
     if(this.ctx)return this.ctx;
     const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return null;
-    this.ctx=new AC(); this.master=this.ctx.createGain(); this.master.gain.value=.16;
-    const lp=this.ctx.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=5200;
-    this.master.connect(lp); lp.connect(this.ctx.destination);
-    const len=this.ctx.sampleRate*.5, b=this.ctx.createBuffer(1,len,this.ctx.sampleRate), d=b.getChannelData(0);
+    const c=this.ctx=new AC(); this.build();
+    this.master=c.createGain(); this.master.gain.value=.22;
+    const comp=c.createDynamicsCompressor(); comp.threshold.value=-18; comp.ratio.value=4;
+    const lp=c.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=7000;
+    this.master.connect(comp); comp.connect(lp); lp.connect(c.destination);
+    // dotted-8th echo for the lead
+    this.echo=c.createGain(); this.echo.gain.value=.28;
+    const dl=c.createDelay(1); dl.delayTime.value=60/this.BPM*.75; const fb=c.createGain(); fb.gain.value=.32;
+    const dlf=c.createBiquadFilter(); dlf.type="lowpass"; dlf.frequency.value=2600;
+    this.echo.connect(dl); dl.connect(dlf); dlf.connect(fb); fb.connect(dl); dlf.connect(this.master);
+    // pulse waves: 25% and 12.5% duty, the classic handheld lead sounds
+    const pulse=d=>{const n=40,re=new Float32Array(n),im=new Float32Array(n);for(let k=1;k<n;k++){re[k]=Math.sin(2*Math.PI*k*d)/(k*Math.PI);im[k]=(1-Math.cos(2*Math.PI*k*d))/(k*Math.PI)}return c.createPeriodicWave(re,im)};
+    this.waves={p25:pulse(.25),p12:pulse(.125)};
+    const len=c.sampleRate*.6,b=c.createBuffer(1,len,c.sampleRate),d=b.getChannelData(0);
     for(let i=0;i<len;i++)d[i]=Math.random()*2-1; this.noise=b;
-    return this.ctx;
+    return c;
   },
-  tone(type,midi,t,dur,vol,slide){
-    const c=this.ctx,o=c.createOscillator(),g=c.createGain();
-    o.type=type; o.frequency.setValueAtTime(440*Math.pow(2,(midi-69)/12),t);
-    if(slide)o.frequency.exponentialRampToValueAtTime(440*Math.pow(2,(midi+slide-69)/12),t+dur);
-    g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.0008,t+dur);
-    o.connect(g); g.connect(this.master); o.start(t); o.stop(t+dur+.02);
+  hz:m=>440*Math.pow(2,(m-69)/12),
+  tone(type,midi,t,dur,vol,slide,opts){
+    const c=this.ctx,o=c.createOscillator(),g=c.createGain(); opts=opts||{};
+    if(this.waves[type])o.setPeriodicWave(this.waves[type]);else o.type=type;
+    o.frequency.setValueAtTime(this.hz(midi),t);
+    if(slide)o.frequency.exponentialRampToValueAtTime(this.hz(midi+slide),t+dur);
+    if(opts.detune)o.detune.value=opts.detune;
+    if(opts.vib&&dur>.25){const l=c.createOscillator(),lg=c.createGain();l.frequency.value=5.6;lg.gain.setValueAtTime(0,t);lg.gain.linearRampToValueAtTime(this.hz(midi)*.012,t+.18);l.connect(lg);lg.connect(o.frequency);l.start(t);l.stop(t+dur+.05)}
+    const a=opts.attack||.004;
+    g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(vol,t+a);
+    if(opts.sustain){g.gain.setValueAtTime(vol,t+dur*.7);g.gain.linearRampToValueAtTime(.0001,t+dur)}else g.gain.exponentialRampToValueAtTime(.0008,t+dur);
+    o.connect(g); g.connect(this.master); if(opts.echo)g.connect(this.echo);
+    o.start(t); o.stop(t+dur+.05);
   },
-  hit(t,dur,vol,hp){
+  hit(t,dur,vol,hp,lp){
     const c=this.ctx,s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();
-    s.buffer=this.noise; f.type="highpass"; f.frequency.value=hp;
+    s.buffer=this.noise; f.type=lp?"bandpass":"highpass"; f.frequency.value=hp;
     g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.0008,t+dur);
-    s.connect(f); f.connect(g); g.connect(this.master); s.start(t); s.stop(t+dur+.02);
+    s.connect(f); f.connect(g); g.connect(this.master); s.start(t,Math.random()*.3); s.stop(t+dur+.02);
   },
-  kick(t){const c=this.ctx,o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.setValueAtTime(140,t);o.frequency.exponentialRampToValueAtTime(42,t+.14);g.gain.setValueAtTime(.9,t);g.gain.exponentialRampToValueAtTime(.001,t+.18);o.connect(g);g.connect(this.master);o.start(t);o.stop(t+.2)},
-  /* Am F C G, twice: the second pass lifts the melody an octave in places */
-  CH:[[57,60,64],[53,57,60],[60,64,67],[55,59,62]], BASS:[45,41,48,43],
-  MEL:[[76,0,72,74,76,79,76,74],[72,0,69,72,74,0,72,69],[67,0,72,0,76,74,72,0],[74,0,71,74,79,0,74,71],
-       [81,0,79,76,79,0,76,72],[77,76,74,72,74,0,0,72],[76,0,79,0,84,0,79,76],[74,0,0,71,74,76,79,0]],
+  kick(t,v){const c=this.ctx,o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.setValueAtTime(160,t);o.frequency.exponentialRampToValueAtTime(40,t+.12);g.gain.setValueAtTime(v||.95,t);g.gain.exponentialRampToValueAtTime(.001,t+.2);o.connect(g);g.connect(this.master);o.start(t);o.stop(t+.22)},
+  snare(t,v){this.hit(t,.14,.42*(v||1),1800,true);this.tone("triangle",50,t,.08,.25*(v||1),-5)},
+  tom(t,m){this.tone("triangle",m,t,.18,.45,-8)},
   sched(){
-    const c=this.ctx, s16=60/112/4;
-    while(this.next<c.currentTime+.12){
-      const st=this.step%128, bar=Math.floor(st/16), b4=bar%4, inBar=st%16, t=this.next;
-      const ch=this.CH[b4];
-      this.tone("square",ch[inBar%3]+(inBar%6>2?12:0),t,s16*.9,.05);
-      if(inBar%4===0||inBar===10)this.tone("triangle",this.BASS[b4],t,s16*3.2,.5);
-      if(inBar%2===0){const m=this.MEL[bar%8][inBar/2]; if(m)this.tone("square",m,t,s16*1.8,.11)}
-      if(inBar===0||inBar===8)this.kick(t);
-      if(inBar===4||inBar===12)this.hit(t,.12,.35,1400);
-      if(inBar%2===0)this.hit(t,.03,.12,7000);
-      this.step++; this.next+=s16;
+    const c=this.ctx, s16=60/this.BPM/4;
+    while(this.next<c.currentTime+.15){
+      const barIdx=Math.floor(this.step/16), st=this.step%16, t=this.next;
+      const B=this.BARS[barIdx], ch=this.CH[B.ch], root=this.ROOT[B.ch], kit=B.kit;
+      // drums
+      const fill=B.last&&st>=12&&kit!=="intro";
+      if(B.first&&st===0&&(kit==="chorus"||kit==="bridge")){this.hit(t,1.1,.22,5000)}
+      if(fill){this.snare(t,.5+(st-12)*.18);if(st===14)this.tom(t,48);if(st===15)this.tom(t,43)}
+      else if(kit==="intro"){if(st===0||st===8)this.kick(t,.6);if(st%4===2)this.hit(t,.03,.08,8000)}
+      else if(kit==="verse"){if(st===0||st===6||st===8||st===11)this.kick(t);if(st===4||st===12)this.snare(t);if(st%2===0)this.hit(t,st===14?.18:.035,st===14?.1:.11,7500)}
+      else if(kit==="chorus"){if(st%4===0)this.kick(t);if(st===4||st===12)this.snare(t,1.1);this.hit(t,.03,st%2?.06:.12,8000);if(st===7||st===15)this.hit(t,.04,.18,1800,true)}
+      else{if(st===0||st===10)this.kick(t,.8);if(st===8)this.snare(t,.9);if(st%4===2)this.hit(t,.2,.06,7000)}
+      // bass
+      if(kit==="intro"){if(st===0)this.tone("triangle",root,t,s16*15,.5,0,{sustain:true})}
+      else if(kit==="verse"){const pat=[0,null,0,12,null,0,7,null,0,null,0,12,null,7,12,null];const n=pat[st];if(n!==null)this.tone("triangle",root+n,t,s16*1.6,.55)}
+      else if(kit==="chorus"){if(st%2===0)this.tone("triangle",root+(st%4===2?12:0),t,s16*1.7,.6)}
+      else{if(st===0)this.tone("triangle",root,t,s16*7.5,.55,0,{sustain:true});if(st===8)this.tone("triangle",root+7,t,s16*7.5,.5,0,{sustain:true})}
+      // arpeggio
+      const arp=[ch[0],ch[1],ch[2],ch[0]+12,ch[1]+12,ch[2]+12,ch[0]+12,ch[2]];
+      if(kit==="chorus")this.tone("square",arp[st%8]+12,t,s16*.8,.035);
+      else if(kit==="bridge"){if(st%2===0)this.tone("p12",arp[(st/2)%8],t,s16*1.6,.045,0,{echo:true})}
+      else this.tone("p12",arp[st%8],t,s16*.85,kit==="intro"?.05:.04);
+      // pad
+      if(B.pad&&(st===0||st===8))ch.forEach((m,i)=>{this.tone("sawtooth",m,t,s16*8,.018,0,{attack:.12,sustain:true,detune:i%2?-8:8})});
+      // lead
+      if(st%2===0){const k=st/2, m=B.mel[k];
+        if(m>0){let len=1;while(k+len<8&&B.mel[k+len]===-1)len++;
+          if(k+len===8&&B.nextMel&&B.nextMel[0]===-1)len++;
+          this.tone(kit==="chorus"?"p25":"p25",m,t,s16*2*len*.95,kit==="chorus"?.13:.11,0,{vib:true,echo:true});
+          if(kit==="chorus")this.tone("p12",m-12,t,s16*2*len*.9,.05)}}
+      this.step++; if(this.step>=this.BARS.length*16)this.step=this.LOOP*16;
+      this.next+=s16;
     }
   },
   start(){
     if(!this.on)return; const c=this.ensure(); if(!c)return;
     c.resume&&c.resume();
     if(this.timer)return;
-    this.next=c.currentTime+.05; this.timer=setInterval(()=>this.sched(),25);
+    this.next=c.currentTime+.08; this.timer=setInterval(()=>this.sched(),25);
   },
   stop(){clearInterval(this.timer);this.timer=null},
   toggle(){this.on=!this.on;lsSet("footnote.music",this.on);this.on?this.start():this.stop();$("musicBtn").setAttribute("aria-pressed",String(this.on))}
