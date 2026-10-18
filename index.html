@@ -199,6 +199,7 @@ td .c{font-family:var(--px);font-size:8px;display:block;margin-bottom:2px}
       <span class="easy">E</span><span class="easy">E</span><span class="medium">M</span><span class="medium">M</span><span class="hard">H</span><span class="hard">H</span><span class="hard">H</span>
     </div>
     <button class="btn pulse" id="playBtn">PLAY TODAY'S ROUND</button>
+    <button class="btn pink" id="splashRedo" hidden>REPLAY FOR PRACTICE</button>
     <button class="btn ghost" id="guestPlay">PLAY AS GUEST</button>
     <div class="row" style="justify-content:center"><button class="linkbtn" id="howBtn">How to play</button><button class="linkbtn" id="boardBtn">Today's leaderboard</button></div>
   </section>
@@ -267,6 +268,8 @@ td .c{font-family:var(--px);font-size:8px;display:block;margin-bottom:2px}
     <div class="tag"><span id="ehead"></span><span>FINAL</span></div>
     <div class="total"><span id="etotal">0</span> <small>/ 700</small></div>
     <p class="lede" id="everdict"></p>
+    <button class="btn pink" id="redoBtn">REPLAY FOR PRACTICE</button>
+    <p class="small center">PRACTICE ROUNDS DON'T CHANGE YOUR SCORE OR STREAK.</p>
     <table id="etable"></table>
     <div class="share" id="eshare"></div>
     <button class="btn" id="copy">COPY RESULT</button>
@@ -276,8 +279,6 @@ td .c{font-family:var(--px);font-size:8px;display:block;margin-bottom:2px}
     <div class="stats" id="stats"></div>
     <h2>NEXT ROUND IN</h2>
     <div class="countdown" id="countdown">--:--:--</div>
-    <button class="btn pink" id="redoBtn">REPLAY FOR PRACTICE</button>
-    <p class="small center">PRACTICE ROUNDS DON'T CHANGE YOUR SCORE OR STREAK.</p>
   </section>
 
   <!-- LEADERBOARD ONLY -->
@@ -1930,16 +1931,19 @@ async function play(){
   setGarage(S.score,false);
   if(S.shown===S.i&&S.results.length===S.i){S.results.push({pid:ORDER[S.i],name:null,pts:0,why:"Left mid-question."});S.i++;}
   if(S.i>=ROUNDS)return endRound(true);
-  await askCheckPermission();
+  await within(askCheckPermission(),20000);
   ask();
 }
 /* replay today's questions for fun: nothing is saved, the official result stays as it was */
 async function practice(){
   sfx("tap"); Music.start();
-  const off=S.practice?S.official:{score:S.score,results:S.results};
+  if(S&&S.phase==="q")return;
+  const c=todayCur();
+  const off=S&&S.practice?S.official:S&&S.done?{score:S.score,results:S.results}:c&&c.done?{score:c.score,results:c.results||[]}:null;
+  if(!off)return play();
   S={i:0,score:0,results:[],shown:-1,done:false,practice:true,official:off};
   document.body.classList.add("practice");
-  setGarage(0,false); await askCheckPermission(); ask();
+  setGarage(0,false); askCheckPermission(); ask();
 }
 function ask(){
   busy=false; S.phase="q"; S.shown=S.i; if(!S.practice)persist();
@@ -2071,13 +2075,14 @@ $("form").addEventListener("submit",submit);
 $("pass").onclick=()=>{if(!busy&&S&&S.phase==="q")finish(null,"Passed.")};
 $("next").onclick=next;
 $("redoBtn").onclick=practice;
+$("splashRedo").onclick=async()=>{if(MODE==="loading")await ready;if(!PROFILE||PROFILE.needsTerms)return needAccount(practice);practice()};
 $("copy").onclick=copy;
 
 /* ---- boot ---- */
 const ready=initStore().then(()=>{
   const c=todayCur();
   if(PROFILE&&!PROFILE.needsTerms)$("guestPlay").hidden=true;
-  if(c&&c.done){$("playBtn").textContent="SEE TODAY'S RESULT";$("playBtn").classList.remove("pulse")}
+  if(c&&c.done){$("playBtn").textContent="SEE TODAY'S RESULT";$("playBtn").classList.remove("pulse");$("splashRedo").hidden=false;$("guestPlay").hidden=true}
   else if(c&&c.i>0){$("playBtn").textContent="CONTINUE TODAY'S ROUND"}
 });
 setGarage(0,false); G.enter=-STAGES[0].w-2; show("splash");
