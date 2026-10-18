@@ -159,6 +159,8 @@ td .c{font-family:var(--px);font-size:8px;display:block;margin-bottom:2px}
 .legal ul{margin:0;padding-left:20px}
 .foot{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;font-size:18px;color:var(--muted);padding-top:6px}
 
+.practice #play,.practice #reveal,.practice #end{border-style:dashed;border-color:var(--pink)}
+.practice #play::before,.practice #reveal::before,.practice #end::before{content:"PRACTICE · DOESN'T COUNT";position:absolute;top:-15px;left:12px;background:var(--pink);color:#fff;font-family:var(--px);font-size:8px;padding:5px 7px;box-shadow:3px 3px 0 var(--shadow)}
 .confetti{position:fixed;inset:0;pointer-events:none;z-index:40}
 @media (max-width:420px){.big-title{font-size:26px}.q{font-size:14px}.logo{font-size:12px}.total{font-size:32px}}
 @media (prefers-reduced-motion:reduce){.big-title,.btn.pulse,.upg,.ladder .cur,.timer.low i,.pop,.shake,.msg.wait::after{animation:none}.prog i{transition:none}}
@@ -274,6 +276,8 @@ td .c{font-family:var(--px);font-size:8px;display:block;margin-bottom:2px}
     <div class="stats" id="stats"></div>
     <h2>NEXT ROUND IN</h2>
     <div class="countdown" id="countdown">--:--:--</div>
+    <button class="btn pink" id="redoBtn">REPLAY FOR PRACTICE</button>
+    <p class="small center">PRACTICE ROUNDS DON'T CHANGE YOUR SCORE OR STREAK.</p>
   </section>
 
   <!-- LEADERBOARD ONLY -->
@@ -813,9 +817,9 @@ R("animals","Famous animals","Name a famous real animal from history.","Horses, 
 R("dynasties","Royal families","Name a royal house or dynasty.","Any country, any era.","house of,house,dynasty,the,of,family",[
 "Tudor|tudors;Windsor;Habsburg|hapsburg;Romanov|romanovs;Ming;Bourbon",
 "Stuart|stewart;Plantagenet;York;Lancaster;Medici;Ptolemaic|ptolemies;Ottoman;Mughal;Qing;Tang;Han;Valois;Hanover",
-"Hohenzollern;Capetian|capet;Borgia;Carolingian;Merovingian;Julio-Claudian|julio claudian;Severan;Achaemenid;Sasanian|sassanid;Abbasid;Umayyad;Fatimid;Safavid;Tokugawa;Joseon",
-"Wittelsbach;Savoy;Orange-Nassau|orange;Vasa;Oldenburg;Braganza;Jagiellonian;Rurikid|rurik;Árpád|arpad;Piast;Komnenos;Palaiologos;Seleucid;Antigonid;Chola;Gupta;Maurya",
-"Ottonian;Salian;Hohenstaufen|staufen;Trastámara|trastamara;Přemyslid|premyslid;Nemanjić|nemanjic;Doukas;Angevin;Godwin;Wessex;Zagwe;Solomonic;Ayyubid;Ghaznavid;Kadamba"]);
+"Hohenzollern;Capetian|capet;Borgia;Carolingian;Merovingian;Julio-Claudian|julio claudian;Severan;Achaemenid;Sasanian|sassanid;Abbasid;Umayyad;Fatimid;Safavid;Pahlavi;Tokugawa;Joseon",
+"Wittelsbach;Savoy;Orange-Nassau|orange;Vasa;Oldenburg;Braganza;Jagiellonian;Rurikid|rurik;Árpád|arpad;Piast;Komnenos;Palaiologos;Seleucid;Antigonid;Chola;Gupta;Maurya;Qajar",
+"Ottonian;Salian;Hohenstaufen|staufen;Trastámara|trastamara;Přemyslid|premyslid;Nemanjić|nemanjic;Doukas;Angevin;Godwin;Wessex;Zagwe;Solomonic;Ayyubid;Ghaznavid;Kadamba;Zand;Afsharid"]);
 
 R("wars","Wars","Name a war.","Any era, any country.","war of the,war of,war,wars,the",[
 "World War I|world i|i world|great|ww1|wwi|world 1;World War II|world ii|ii world|ww2|wwii|world 2;Vietnam War|vietnam;American Civil War|american civil;Cold War|cold",
@@ -1296,7 +1300,21 @@ const ORDER=dailyOrder();
 
 /* ---- answer checker for answers outside the built-in lists ---- */
 let SAMPLE=null;
-(async()=>{try{SAMPLE=await window.claude?.use?.("sample")??null}catch(_){SAMPLE=null}})();
+const SAMPLE_P=(async()=>{try{return await window.claude?.use?.("sample")??null}catch(_){return null}})();
+SAMPLE_P.then(x=>{SAMPLE=x});
+const within=(p,ms)=>Promise.race([p,new Promise(r=>setTimeout(()=>r(null),ms))]);
+let PERM_ASKED=false, CHECK_DENIED=false;
+/* asks for answer-checking permission when the round starts, so the dialog never appears mid-question */
+async function askCheckPermission(){
+  if(PERM_ASKED)return; PERM_ASKED=true;
+  try{
+    if(!await within(SAMPLE_P,2500))return;
+    const pm=await window.claude?.use?.("permissions"); if(!pm)return;
+    let st=await pm.state("sample");
+    if(st==="prompt")st=(await pm.request(["sample"])).sample;
+    CHECK_DENIED=st==="denied";
+  }catch(_){}
+}
 const HARD_OFF=new Set(["not_granted","sampling_disabled","not_declared","capability_disabled","capability_removed"]);
 function judgePrompt(p,v){
   return `You check answers for a history trivia game.
@@ -1313,17 +1331,50 @@ or for a rejected answer:
 }
 const snap=n=>[5,15,30,60,100].reduce((a,b)=>Math.abs(b-n)<Math.abs(a-n)?b:a,5);
 async function judge(p,v){
-  if(!SAMPLE)return {off:true};
+  if(!SAMPLE)SAMPLE=await within(SAMPLE_P,1500);
+  if(!SAMPLE)return wikiJudge(p,v);
   try{
     const r=await SAMPLE.json(judgePrompt(p,v),{modelTier:"quick"});
     if(!r||typeof r!=="object")return {err:"Couldn't check that one. Submit again."};
     if(!r.valid)return {bad:String(r.reason||"That doesn't fit the question.")};
     return {e:{name:String(r.name||v).slice(0,80),pts:snap(Number(r.pts)||5),label:"",note:String(r.note||"").slice(0,220),src:"check"}};
   }catch(e){
-    if(HARD_OFF.has(e&&e.code)){SAMPLE=null;return {off:true}}
+    if(HARD_OFF.has(e&&e.code)){SAMPLE=null;if(e.code==="not_granted")CHECK_DENIED=true;return wikiJudge(p,v)}
     if(e&&e.code==="rate_limited")return {err:"Too many checks at once. Wait a moment and submit again."};
     return {err:"The check didn't go through. Submit again."};
   }
+}
+/* Fallback checker where the built-in checker isn't available (e.g. the GitHub site):
+   the answer must match a Wikipedia article whose summary fits the question, and rarity comes
+   from the article's average monthly page views over the last three months. */
+const WSTOP=new Set("name that this from with famous real person people history historical born before after country countries made built give used ever which their your each".split(" "));
+function keywordsFor(p){return [...new Set(p.q.toLowerCase().replace(/[^a-z ]/g," ").split(" ").filter(w=>w.length>3&&!WSTOP.has(w)).map(w=>w.slice(0,5)))]}
+async function monthlyViews(t){
+  try{const end=new Date();end.setDate(1);const start=new Date(end);start.setMonth(start.getMonth()-3);
+    const f=d=>`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}01`;
+    const r=await fetch(`https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/user/${encodeURIComponent(t.replace(/ /g,"_"))}/monthly/${f(start)}/${f(end)}`).then(r=>r.json());
+    const it=r.items||[];return it.length?it.reduce((a,x)=>a+x.views,0)/it.length:null}catch(_){return null}
+}
+async function wikiJudge(p,v){
+  try{
+    const sr=await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(v)}&srlimit=6&format=json&origin=*`).then(r=>r.json());
+    const hits=(sr.query&&sr.query.search)||[];
+    if(!hits.length)return {bad:"Couldn't find that in the history books."};
+    const kws=keywordsFor(p), words=norm(v,[]).split(" ").filter(w=>w.length>2);
+    for(const h of hits){
+      const t=norm(h.title,[]).split(" ");
+      if(!words.length||!words.every(w=>t.some(x=>x===w||(w.length>4&&x.startsWith(w.slice(0,-1))))))continue;
+      const sum=await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(h.title.replace(/ /g,"_"))}`).then(r=>r.json());
+      if(sum.type==="disambiguation")continue;
+      const text=((sum.description||"")+" "+(sum.extract||"")).toLowerCase();
+      if(kws.length&&!kws.some(k=>(" "+text.replace(/[^a-z]+/g," ")).includes(" "+k)))continue;
+      const views=await monthlyViews((sum.titles&&sum.titles.canonical)||h.title);
+      const pts=views==null?30:views>=100000?5:views>=20000?15:views>=5000?30:views>=1000?60:100;
+      const first=((sum.extract||"").match(/^.*?\.(\s|$)/)||[""])[0].trim();
+      return {e:{name:sum.title||h.title,pts,label:"",note:first.slice(0,220),src:"check"}};
+    }
+    return {bad:"That doesn't fit this question."};
+  }catch(_){return {off:true}}
 }
 async function factFor(p,name){
   if(!SAMPLE)return "";
@@ -1666,7 +1717,7 @@ const TERMS_HTML=()=>`
 <li>Do not attempt to disrupt, reverse engineer, overload or gain unauthorised access to the Game or its data.</li>
 <li>We may remove scores, reset progress, or suspend or close accounts that break these Terms.</li></ul>
 <h3>4. ANSWERS AND CONTENT</h3>
-<p>Questions, answer lists, scoring tiers, facts and figures are provided for entertainment. We try to be accurate but do not guarantee that any answer, rarity rating or fact is correct or complete. Scoring decisions are final.</p>
+<p>Questions, answer lists, scoring tiers, facts and figures are provided for entertainment. We try to be accurate but do not guarantee that any answer, rarity rating or fact is correct or complete. Answers not found in our built-in lists may be looked up on Wikipedia and scored by how often their article is read, which can make mistakes. Scoring decisions are final.</p>
 <h3>5. INTELLECTUAL PROPERTY</h3>
 <p>The Game, including its design, artwork, music, code and question content, belongs to ${L("operator")} or its licensors. You may share your result text freely. You may not copy, resell or redistribute the Game or its content without permission.</p>
 <h3>6. NO PRIZES</h3>
@@ -1690,10 +1741,10 @@ const PRIVACY_HTML=()=>`
 <li><b>Agreement record.</b> That you confirmed you are 13 or older and accepted these policies, and when.</li>
 <li><b>Game data.</b> Your daily results, answers, scores and streaks.</li>
 <li><b>Music setting.</b> Whether you turned sound off.</li></ul>
-<p>All of this is saved only in your browser's local storage on your device. It is never sent to us or anyone else.</p>
+<p>All of this is saved only in your browser's local storage on your device. It is never sent to us. Answers you type that aren't on our lists are looked up on Wikipedia (see below).</p>
 <h3>HOW WE USE IT</h3>
 <ul><li>To run the daily round, stop replays, and keep your record and streak.</li>
-</ul>
+<li>To check answers that are not in our built-in lists. The answer text is looked up on Wikipedia, run by the Wikimedia Foundation, which receives it along with your IP address. Do not type personal information into answers.</li></ul>
 <p>The Game loads its fonts from Google Fonts, which receives your IP address as part of delivering them. The site is hosted on GitHub Pages, which may log visits under GitHub's own privacy statement.</p>
 <h3>WHAT WE DON'T DO</h3>
 <p>We do not sell your data, show ads, or use tracking cookies. We do not ask for your real name, email or location.</p>
@@ -1869,7 +1920,7 @@ function ladder(el){
   el.innerHTML=ORDER.map((id,i)=>{const lv=levelOf(byId(id));const cls=i<S.results.length?"done":i===S.i?"cur":"";return `<span class="${lv} ${cls}">${lv[0].toUpperCase()}</span>`}).join("");
 }
 async function play(){
-  sfx("tap"); Music.start();
+  sfx("tap"); Music.start(); document.body.classList.remove("practice");
   if(MODE==="loading")await ready;
   if(!PROFILE||PROFILE.needsTerms)return needAccount(play);
   const c=todayCur();
@@ -1879,10 +1930,19 @@ async function play(){
   setGarage(S.score,false);
   if(S.shown===S.i&&S.results.length===S.i){S.results.push({pid:ORDER[S.i],name:null,pts:0,why:"Left mid-question."});S.i++;}
   if(S.i>=ROUNDS)return endRound(true);
+  await askCheckPermission();
   ask();
 }
+/* replay today's questions for fun: nothing is saved, the official result stays as it was */
+async function practice(){
+  sfx("tap"); Music.start();
+  const off=S.practice?S.official:{score:S.score,results:S.results};
+  S={i:0,score:0,results:[],shown:-1,done:false,practice:true,official:off};
+  document.body.classList.add("practice");
+  setGarage(0,false); await askCheckPermission(); ask();
+}
 function ask(){
-  busy=false; S.phase="q"; S.shown=S.i; persist();
+  busy=false; S.phase="q"; S.shown=S.i; if(!S.practice)persist();
   const p=byId(ORDER[S.i]), lv=levelOf(p); build(p);
   ladder($("ladder"));
   $("qnum").innerHTML=`Q<b>${S.i+1}</b>/${ROUNDS} · ${esc(p.short.toUpperCase())}`;
@@ -1910,7 +1970,6 @@ async function submit(e){
   const p=byId(ORDER[S.i]); const m=match(p,v);
   if(m&&m.nope)return fail(m.nope);
   if(m&&m.e)return finish({...m.e,src:"list"});
-  if(!SAMPLE)return fail(m&&m.amb?"Several answers fit that. Be more specific.":`"${v}" isn't on our list. Try another.`);
   busy=true; pause(); $("answer").disabled=true; $("submitBtn").disabled=true; setMsg("Checking","wait");
   const round=S.i, r=await judge(p,v);
   if(S.phase!=="q"||S.i!==round)return;
@@ -1919,7 +1978,8 @@ async function submit(e){
   run(); $("answer").focus();
   if(r.bad)return fail(`Not accepted: ${r.bad}`);
   if(r.err)return fail(r.err);
-  fail(m&&m.amb?"Several answers fit that. Be more specific.":`"${v}" isn't on our list. Try another.`);
+  if(m&&m.amb)return fail("Several answers fit that. Be more specific.");
+  fail(CHECK_DENIED?`"${v}" isn't on our list, and answer checking is switched off. Allow it in this page's Permissions menu, or try another answer.`:`"${v}" isn't on our list, and it couldn't be checked right now. Try another answer.`);
 }
 function finish(entry,why){
   clearInterval(timer); if(S.phase!=="q")return; S.phase="reveal";
@@ -1927,7 +1987,7 @@ function finish(entry,why){
   S.score+=pts;
   S.results.push({pid:p.id,name:entry?entry.name:null,pts,note:entry?entry.note||"":"",src:entry?entry.src:"",why:why||""});
   if(entry){sfx(pts>=60?"big":"ok");buzz(pts>=60?[30,30,30]:20)}else{sfx("bad");buzz(80)}
-  S.i++; persist();
+  S.i++; if(!S.practice)persist();
   setGarage(S.score,true); renderReveal();
   const res=S.results[S.results.length-1];
   if(entry&&!res.note&&SAMPLE){
@@ -1960,6 +2020,7 @@ function renderReveal(){
 function next(){sfx("tap");if(S.i<ROUNDS)ask();else endRound(true)}
 async function endRound(fresh){
   S.phase="end";
+  if(S.practice)return renderEnd();
   if(fresh&&!S.done){
     S.done=true;
     PROFILE.hist=(PROFILE.hist||[]).filter(x=>x.d!==TODAY).concat([{d:TODAY,s:S.score}]).slice(-365);
@@ -1969,13 +2030,15 @@ async function endRound(fresh){
   lsSet(CKEY,{d:TODAY,i:S.i,score:S.score,results:S.results,done:true});
   renderEnd();
 }
-function shareText(){return `FOOTNOTE No.${dayNo} — ${S.score}/700\n${STAGES[stageAt(S.score)].name}\n${S.results.map(r=>GLYPH[r.pts]).join("")}`}
+function shareText(){const R=S.practice?S.official:S;return `FOOTNOTE No.${dayNo} — ${R.score}/700\n${STAGES[stageAt(R.score)].name}\n${R.results.map(r=>GLYPH[r.pts]).join("")}`}
 async function renderEnd(){
   setGarage(S.score,false);
-  $("ehead").textContent=`DAILY ROUND NO.${dayNo}`;
+  $("ehead").textContent=S.practice?"PRACTICE ROUND · DOESN'T COUNT":`DAILY ROUND NO.${dayNo}`;
+  $("redoBtn").textContent=S.practice?"PRACTICE AGAIN":"REPLAY FOR PRACTICE";
   $("etotal").textContent=S.score;
   const sc=S.score;
-  $("everdict").textContent=sc>=500?"Archivist grade. You read the footnotes for fun.":sc>=300?"Well past the headlines. A proper historian's round.":sc>=150?"Solid. Tomorrow, reach for the answer nobody else would.":"Mostly headlines. The archive has deeper drawers.";
+  if(S.practice)$("everdict").textContent=`Practice score: ${sc}. Your official score for today stays ${S.official.score}. Your streak is unchanged.`;
+  else $("everdict").textContent=sc>=500?"Archivist grade. You read the footnotes for fun.":sc>=300?"Well past the headlines. A proper historian's round.":sc>=150?"Solid. Tomorrow, reach for the answer nobody else would.":"Mostly headlines. The archive has deeper drawers.";
   $("etable").innerHTML=S.results.map(r=>{const p=byId(r.pid),lv=levelOf(p);return `<tr><td><span class="c" style="color:var(--${lv==="medium"?"med":lv})">${lv.toUpperCase()} · ${esc(p.short.toUpperCase())}</span>${r.name?esc(r.name):"<em>"+esc(r.why||"No answer")+"</em>"}</td><td class="n">+${r.pts}</td></tr>`}).join("");
   $("eshare").textContent=shareText(); $("copy").textContent="COPY RESULT";
   const st=stats();
@@ -2007,6 +2070,7 @@ $("boardBack").onclick=()=>{sfx("tap");show("splash")};
 $("form").addEventListener("submit",submit);
 $("pass").onclick=()=>{if(!busy&&S&&S.phase==="q")finish(null,"Passed.")};
 $("next").onclick=next;
+$("redoBtn").onclick=practice;
 $("copy").onclick=copy;
 
 /* ---- boot ---- */
