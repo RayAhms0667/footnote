@@ -4,12 +4,30 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#120f22">
-<meta name="description" content="Footnote: a daily retro history trivia game. Seven questions a day. Name the answers nobody else would.">
-<meta property="og:title" content="Footnote">
-<meta property="og:description" content="A daily retro history trivia game. Rare answers upgrade your tank.">
+<meta name="description" content="Footnote is a free daily retro history trivia game. Seven questions a day: name the answers nobody else would. Rare answers upgrade your pixel tank.">
+<link rel="canonical" href="https://rayahms0667.github.io/footnote/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Footnote">
+<meta property="og:title" content="Footnote: daily history trivia">
+<meta property="og:description" content="Seven questions a day. Name the answers nobody else would. Rare answers upgrade your tank.">
+<meta property="og:url" content="https://rayahms0667.github.io/footnote/">
+<meta property="og:image" content="https://rayahms0667.github.io/footnote/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Footnote: a pixel tank at sunset under the words Daily history trivia">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Footnote: daily history trivia">
+<meta name="twitter:description" content="Seven questions a day. Name the answers nobody else would.">
+<meta name="twitter:image" content="https://rayahms0667.github.io/footnote/og-image.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Footnote">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23120f22'/%3E%3Crect x='2' y='10' width='12' height='3' fill='%23f6eedb'/%3E%3Crect x='3' y='7' width='10' height='3' fill='%2389a852'/%3E%3Crect x='6' y='4' width='5' height='3' fill='%2389a852'/%3E%3Crect x='11' y='5' width='4' height='1' fill='%23ffd84a'/%3E%3C/svg%3E">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"Footnote","url":"https://rayahms0667.github.io/footnote/","description":"Footnote is a free daily retro history trivia game. Seven questions a day: name the answers nobody else would. Rare answers upgrade your pixel tank.","genre":["Trivia","Quiz","Educational"],"gamePlatform":"Web browser","applicationCategory":"Game","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"GBP"},"image":"https://rayahms0667.github.io/footnote/og-image.png"}</script>
 <title>Footnote</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,7 +55,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(-
 
 /* top bar */
 .hud{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;align-items:center;gap:8px;padding-block:10px;background:linear-gradient(var(--bg) 70%,transparent)}
-.logo{font-family:var(--px);font-size:15px;letter-spacing:.04em;color:var(--ink);text-shadow:2px 2px 0 var(--pink),4px 4px 0 var(--shadow);flex:1;min-width:0;white-space:nowrap}
+.logo{background:none;border:0;padding:0;cursor:pointer;text-align:left;font-family:var(--px);font-size:15px;letter-spacing:.04em;color:var(--ink);text-shadow:2px 2px 0 var(--pink),4px 4px 0 var(--shadow);flex:1;min-width:0;white-space:nowrap}
 .logo sup{color:var(--yellow);font-size:.6em;text-shadow:none}
 .day{font-family:var(--px);font-size:9px;color:var(--muted);white-space:nowrap}
 .icon{width:42px;height:42px;display:grid;place-items:center;border:3px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;padding:0;box-shadow:3px 3px 0 var(--shadow)}
@@ -161,6 +179,8 @@ td .c{font-family:var(--px);font-size:8px;display:block;margin-bottom:2px}
 
 .practice #play,.practice #reveal,.practice #end{border-style:dashed;border-color:var(--pink)}
 .practice #play::before,.practice #reveal::before,.practice #end::before{content:"PRACTICE · DOESN'T COUNT";position:absolute;top:-15px;left:12px;background:var(--pink);color:#fff;font-family:var(--px);font-size:8px;padding:5px 7px;box-shadow:3px 3px 0 var(--shadow)}
+.modal{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:rgba(7,6,15,.78)}
+.modal .card{max-width:420px;width:100%}
 .confetti{position:fixed;inset:0;pointer-events:none;z-index:40}
 @media (max-width:420px){.big-title{font-size:26px}.q{font-size:14px}.logo{font-size:12px}.total{font-size:32px}}
 @media (prefers-reduced-motion:reduce){.big-title,.btn.pulse,.upg,.ladder .cur,.timer.low i,.pop,.shake,.msg.wait::after{animation:none}.prog i{transition:none}}
@@ -173,7 +193,7 @@ td .c{font-family:var(--px);font-size:8px;display:block;margin-bottom:2px}
 
 <div class="wrap">
   <header class="hud">
-    <div class="logo">FOOTNOTE<sup>†</sup></div>
+    <button class="logo" id="homeBtn" aria-label="Footnote home">FOOTNOTE<sup>†</sup></button>
     <span class="day" id="dayno"></span>
     <button class="icon" id="musicBtn" aria-pressed="true" aria-label="Music on or off" title="Music">
       <svg viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><rect x="3" y="1" width="6" height="1"/><rect x="3" y="1" width="1" height="6"/><rect x="8" y="1" width="1" height="5"/><rect x="1" y="6" width="3" height="2"/><rect x="6" y="5" width="3" height="2"/></svg>
@@ -288,7 +308,15 @@ td .c{font-family:var(--px);font-size:8px;display:block;margin-bottom:2px}
     <button class="btn ghost" id="boardBack">BACK</button>
   </section>
 
-  <footer class="foot"><button class="linkbtn" id="termsLink">Terms of Service</button><button class="linkbtn" id="privacyLink">Privacy Policy</button></footer>
+  <footer class="foot"><button class="linkbtn" id="termsLink">Terms of Service</button><button class="linkbtn" id="privacyLink">Privacy Policy</button><a class="linkbtn" href="https://github.com/RayAhms0667/footnote/issues/new" target="_blank" rel="noopener">Report a problem</a></footer>
+</div>
+<div class="modal" id="leave" hidden role="dialog" aria-modal="true" aria-labelledby="leaveTitle">
+  <div class="card">
+    <h2 id="leaveTitle">LEAVE THIS QUESTION?</h2>
+    <p>Your round is saved, but leaving now counts this question as a pass.</p>
+    <button class="btn pink" id="leaveYes">LEAVE</button>
+    <button class="btn ghost" id="leaveNo">KEEP PLAYING</button>
+  </div>
 </div>
 <canvas class="confetti" id="confetti" hidden></canvas>
 
@@ -1703,8 +1731,9 @@ function confetti(){
 }
 
 /* ---- legal: fill in OPERATOR, CONTACT and LAW before you publish widely ---- */
-const LEGAL={version:"2026-10-18",updated:"18 October 2026",operator:"[Operator name]",contact:"[contact email]",law:"[country / state]"};
-const L=k=>`<b style="color:var(--pink)">${esc(LEGAL[k])}</b>`;
+const ISSUES="https://github.com/RayAhms0667/footnote/issues";
+const LEGAL={version:"2026-10-18",updated:"18 October 2026",operator:"Footnote",law:"England and Wales"};
+const L=k=>k==="contact"?`opening an issue at <a href="${ISSUES}" target="_blank" rel="noopener">github.com/RayAhms0667/footnote/issues</a>`:esc(LEGAL[k]);
 const TERMS_HTML=()=>`
 <p>These Terms of Service ("Terms") govern your use of Footnote, a daily history trivia game (the "Game"), provided by ${L("operator")} ("we", "us"). By creating an account or playing, you agree to these Terms. If you do not agree, do not use the Game.</p>
 <h3>1. ELIGIBILITY</h3>
@@ -1734,7 +1763,7 @@ const TERMS_HTML=()=>`
 <h3>11. GOVERNING LAW</h3>
 <p>These Terms are governed by the laws of ${L("law")}, without affecting any mandatory consumer protections where you live.</p>
 <h3>12. CONTACT</h3>
-<p>Questions about these Terms: ${L("contact")}.</p>`;
+<p>Questions about these Terms: contact us by ${L("contact")}.</p>`;
 const PRIVACY_HTML=()=>`
 <p>This Privacy Policy explains what Footnote (the "Game"), provided by ${L("operator")}, collects and why.</p>
 <h3>WHAT WE COLLECT</h3>
@@ -1752,9 +1781,9 @@ const PRIVACY_HTML=()=>`
 <h3>RETENTION AND DELETION</h3>
 <p>Your data stays on your device until you delete your account from the Account screen or clear your browser's site data.</p>
 <h3>CHILDREN</h3>
-<p>The Game is not intended for children under 13, and we do not knowingly collect their data. If you believe a child under 13 has an account, contact us and we will delete it.</p>
+<p>The Game is not intended for children under 13, and we do not knowingly collect their data. If you believe a child under 13 has an account, contact us by ${L("contact")} and we will delete it.</p>
 <h3>YOUR RIGHTS</h3>
-<p>Depending on where you live, you may have rights to access, correct, delete or object to the use of your data. Contact ${L("contact")}.</p>
+<p>Depending on where you live, including under UK and EU data protection law, you may have rights to access, correct, delete or object to the use of your data. To exercise them, contact us by ${L("contact")}. Please don't post personal information in a public issue; ask us for a private way to reach you instead.</p>
 <h3>CHANGES</h3>
 <p>We will post updates here and change the date above. Material changes require you to accept them again.</p>`;
 
@@ -2059,8 +2088,11 @@ function countdown(){
     const h=String(s/3600|0).padStart(2,"0"),m=String((s%3600)/60|0).padStart(2,"0"),x=String(s%60).padStart(2,"0");$("countdown").textContent=`${h}:${m}:${x}`};
   upd(); cdT=setInterval(upd,1000);
 }
+/* the public site's own address, added to shared results (empty inside claude.ai or a local file) */
+const SITE=/claude/.test(location.hostname)||!/^https?:$/.test(location.protocol)?"":location.origin+location.pathname.replace(/index\.html$/,"");
 async function copy(){
-  const t=shareText();
+  const t=shareText()+(SITE?"\n"+SITE:"");
+  if(SITE&&navigator.share){try{await navigator.share({text:t});return}catch(e){if(e&&e.name==="AbortError")return}}
   try{await navigator.clipboard.writeText(t);$("copy").textContent="COPIED!";sfx("ok")}
   catch(_){const r=document.createRange();r.selectNodeContents($("eshare"));const s=getSelection();s.removeAllRanges();s.addRange(r);$("copy").textContent="SELECTED - COPY IT"}
 }
@@ -2079,14 +2111,30 @@ $("splashRedo").onclick=async()=>{if(MODE==="loading")await ready;if(!PROFILE||P
 $("copy").onclick=copy;
 
 /* ---- boot ---- */
-const ready=initStore().then(()=>{
+function refreshSplash(){
   const c=todayCur();
-  if(PROFILE&&!PROFILE.needsTerms)$("guestPlay").hidden=true;
-  if(c&&c.done){$("playBtn").textContent="SEE TODAY'S RESULT";$("playBtn").classList.remove("pulse");$("splashRedo").hidden=false;$("guestPlay").hidden=true}
-  else if(c&&c.i>0){$("playBtn").textContent="CONTINUE TODAY'S ROUND"}
-});
+  $("guestPlay").hidden=!!(PROFILE&&!PROFILE.needsTerms)||!!(c&&c.done);
+  $("splashRedo").hidden=!(c&&c.done);
+  $("playBtn").classList.toggle("pulse",!(c&&c.done));
+  $("playBtn").textContent=c&&c.done?"SEE TODAY'S RESULT":c&&c.i>0?"CONTINUE TODAY'S ROUND":"PLAY TODAY'S ROUND";
+}
+const ready=initStore().then(refreshSplash);
+function goHome(){
+  if(S&&S.phase==="q"&&!busy){
+    if(S.practice){clearInterval(timer);S.phase="idle";}
+    else{pause();$("leave").hidden=false;$("leaveNo").focus();return}
+  }
+  if(S&&S.phase==="q"&&busy)return;
+  document.body.classList.remove("practice");
+  refreshSplash(); show("splash");
+}
+$("homeBtn").onclick=()=>{sfx("tap");goHome()};
+$("leaveNo").onclick=()=>{$("leave").hidden=true;run();$("answer").focus()};
+$("leaveYes").onclick=()=>{$("leave").hidden=true;finish(null,"Left mid-question.");refreshSplash();show("splash")};
 setGarage(0,false); G.enter=-STAGES[0].w-2; show("splash");
 </script>
 
+<noscript><p style="font-family:monospace;color:#f6eedb;text-align:center;padding:24px">Footnote needs JavaScript turned on to play.</p></noscript>
+<script>if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));</script>
 </body>
 </html>

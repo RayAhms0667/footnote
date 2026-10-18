@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rayahms0667.github.io/footnote/sitemap.xml
