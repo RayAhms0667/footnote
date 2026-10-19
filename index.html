@@ -1981,7 +1981,7 @@ function confetti(){
 
 /* ---- legal: fill in OPERATOR, CONTACT and LAW before you publish widely ---- */
 const ISSUES="https://github.com/RayAhms0667/footnote/issues";
-const LEGAL={version:"2026-10-18b",updated:"18 October 2026",operator:"Footnote",law:"England and Wales"};
+const LEGAL={version:"2026-10-18b",updated:"19 October 2026",operator:"Footnote",law:"England and Wales"};
 const L=k=>k==="contact"?`opening an issue at <a href="${ISSUES}" target="_blank" rel="noopener">github.com/RayAhms0667/footnote/issues</a>`:esc(LEGAL[k]);
 const TERMS_HTML=()=>`
 <p>These Terms of Service ("Terms") govern your use of Footnote, a daily history trivia game (the "Game"), provided by ${L("operator")} ("we", "us"). By creating an account or playing, you agree to these Terms. If you do not agree, do not use the Game.</p>
@@ -2001,7 +2001,7 @@ const TERMS_HTML=()=>`
 <p>The Game, including its design, artwork, music, code and question content, belongs to ${L("operator")} or its licensors. You may share your result text freely. You may not copy, resell or redistribute the Game or its content without permission.</p>
 <h3>6. UNLIMITED PLAY AND PRIZES</h3>
 <p>The daily round is free. Where offered, unlimited play is an optional one-off purchase of £3.99, including VAT where applicable. It is sold by our reseller, Lemon Squeezy, which acts as merchant of record and handles payment, tax, receipts and refunds under its own terms.</p>
-<p>Unlimited play is unlocked on each device by entering the licence key from your purchase email, up to the number of devices shown at checkout. Because it is digital content supplied immediately, you ask at purchase for it to be unlocked straight away and acknowledge that you then lose your 14-day right to cancel. This does not affect your rights if it is faulty or not as described. Unlimited rounds do not change your daily score, streak or leaderboard place.</p>
+<p>Unlimited play is unlocked on each device by entering the licence key from your purchase email, up to the number of devices shown at checkout. You can cancel within 14 days of purchase for a full refund, by contacting Lemon Squeezy through your receipt or by contacting us. Refunded licence keys stop working. This does not affect your other legal rights, including if unlimited play is faulty or not as described. Unlimited rounds do not change your daily score, streak or leaderboard place.</p>
 <p>Scores have no monetary value and do not entitle you to any prize.</p>
 <h3>7. AVAILABILITY AND CHANGES</h3>
 <p>We may change, suspend or discontinue any part of the Game at any time, including questions, scoring and features. We may update these Terms; the date at the top shows the latest version, and we will ask you to accept material changes before you play again.</p>
@@ -2415,7 +2415,7 @@ function renderUnlimited(){
       <ul class="perks"><li>Play as many rounds as you like, any time</li><li>Fresh questions from all ${POOL.length} categories every round</li><li>Mixed rounds, or hard-only rounds for experts</li><li>Your tank, music and answer checking, all included</li><li>Your daily round stays free</li></ul>
       <div class="price-big">${STORE.price}</div>
       <p class="lede">One-off payment. No subscription. Includes VAT where applicable. Sold by our reseller, Lemon Squeezy.</p>
-      <label class="check"><input type="checkbox" id="ulConsent"><span>I want unlimited play unlocked straight away, and I understand I lose my 14-day right to cancel once it's unlocked. I agree to the <button class="linkbtn" type="button" id="ulTerms" style="padding:0">Terms of Service</button>.</span></label>
+      <p class="small">14-DAY MONEY-BACK GUARANTEE. BY BUYING YOU AGREE TO THE <button class="linkbtn" type="button" id="ulTerms" style="padding:0;font-size:inherit;font-family:inherit">TERMS OF SERVICE</button>.</p>
       <p class="err" id="ulErr" role="alert"></p>
       <button class="btn" id="ulBuy" ${ready2?"":"disabled"}>${ready2?"BUY FOR "+STORE.price:"COMING SOON"}</button>
       <div class="field"><label for="ulKey">ALREADY BOUGHT IT? ENTER YOUR LICENCE KEY</label><input type="text" id="ulKey" autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="From your purchase email"></div>
@@ -2423,7 +2423,6 @@ function renderUnlimited(){
       <button class="btn ghost" id="ulBack">BACK</button>`;
     $("ulTerms").onclick=()=>openLegal("terms","unlimited");
     $("ulBuy").onclick=()=>{
-      if(!$("ulConsent").checked)return $("ulErr").textContent="Please tick the box to confirm before buying.";
       $("ulErr").textContent="Checkout opened in a new tab. When you've paid, paste the licence key from your email below.";
       window.open(STORE.checkout,"_blank","noopener");
     };
