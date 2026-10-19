@@ -8,7 +8,7 @@ A free daily retro history trivia game. Seven questions a day (2 easy, 2 medium,
 
 - One official round per day, the same questions for everyone, resetting at local midnight
 - Practice replays that never change your score or streak
-- 110 question categories with answers in five rarity tiers
+- 140 daily questions (40 easy, 40 medium, 60 hard), dealt on a fixed schedule so none repeats until all have been used (20 days), and none returns within 10 days
 - Answers not on the built-in lists are checked against Wikipedia, with rarity scored from article page views
 - Original chiptune soundtrack and sound effects, generated in the browser
 - Player accounts or guest play, saved in the player's browser
